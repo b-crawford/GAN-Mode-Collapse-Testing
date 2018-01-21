@@ -11,7 +11,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # Structure: loop through a big sample by taking minibatches, do this for a number of epochs . Do all of this for
 # however many trials,randomising the learning rate parameters each time
 number_of_trails = 200
-number_of_epochs = 100
+number_of_epochs = 200
 mini_batch_size = 10
 sample_size = 2000
 learn_steps = (number_of_epochs*sample_size) / mini_batch_size
@@ -19,21 +19,28 @@ hidden_layer_size_d = 6
 hidden_layer_size_g = 5
 
 # define actual distribution
-real_mean_1 = 2
+real_mean_1 = 0
 real_sd_1 = 1
 
 real_mean_2 = 10
 real_sd_2 = 1
 
-
-# discriminator and generator NNs
-def discriminator(input, parameters):
+def discriminator(input, parameters, minibatch_layer = False):
     pre_0 = tf.to_float(input)
     activ_1 = tf.add(tf.matmul(pre_0, parameters[0]), parameters[1])
     pre_1 = tf.tanh(activ_1)
     activ_2 = tf.add(tf.matmul(pre_1, parameters[2]), parameters[3])
     pre_2 = tf.tanh(activ_2)
-    activ_3 = tf.add(tf.matmul(pre_2, parameters[4]), parameters[5])
+    if minibatch_layer:
+        activ_3 = tf.add(tf.matmul(pre_2, parameters[4]), parameters[5])
+        activation = tf.reshape(activ_3, (-1, 5, 3))
+        diffs = tf.expand_dims(activation, 3) - \
+                tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)
+        abs_diffs = tf.reduce_sum(tf.abs(diffs), 2)
+        minibatch_features = tf.reduce_sum(tf.exp(-abs_diffs), 2)
+        tf.concat([pre_2, minibatch_features], 1)
+    else:
+        activ_3 = tf.add(tf.matmul(pre_2, parameters[4]), parameters[5])
     output = tf.sigmoid(activ_3)
     return output
 
@@ -69,9 +76,9 @@ g_parameters = [weight_g_1,bias_g_1, weight_g_2, bias_g_2]
 x = tf.placeholder(tf.float32, shape=(None, 1))
 z = tf.placeholder(tf.float32, shape=(None, 1))
 with tf.variable_scope("Discrim") as scope:
-    D1 = discriminator(x, d_parameters)
+    D1 = discriminator(x, d_parameters, minibatch_layer= True)
     scope.reuse_variables()
-    D2 = discriminator(generator(z, g_parameters), d_parameters)
+    D2 = discriminator(generator(z, g_parameters), d_parameters, minibatch_layer= True)
 loss_d = tf.reduce_mean(-tf.log(D1) - tf.log(1 - D2))
 loss_g = tf.reduce_mean(-tf.log(D2))
 
