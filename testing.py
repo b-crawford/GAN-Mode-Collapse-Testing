@@ -5,15 +5,20 @@ import numpy as np
 real_mean_1 = 6
 real_sd_1 = 1
 
-real_mean_2 = 2
-real_sd_2 = 0.5
+real_mean_2 = 10
+real_sd_2 = 100
 
 sample_size = 3
 
-real_dist_1 = np.random.normal(real_mean_1, real_sd_1, (sample_size, 1))
-real_dist_2 = np.random.normal(real_mean_2, real_sd_2, (sample_size, 1))
-real_dist = real_dist_1 + real_dist_2
 
-print real_dist_1
-print real_dist_2
-print real_dist
+which = np.random.choice((0,1),sample_size)
+means = which*real_mean_1 + (1-which)*real_mean_2
+sds = which*real_sd_1 + (1-which)*real_sd_2
+samples = np.random.normal(means,sds,sample_size)
+
+print means
+print sds
+print samples
+
+def guassian_mixture(mu_1,sd_1,mu_2,sd_2,weights, sample_size):
+    means = 10

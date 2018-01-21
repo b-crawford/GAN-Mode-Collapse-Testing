@@ -19,11 +19,11 @@ hidden_layer_size_d = 6
 hidden_layer_size_g = 5
 
 # define actual distribution
-real_mean_1 = 6
+real_mean_1 = 2
 real_sd_1 = 1
 
-real_mean_2 = 2
-real_sd_2 = 0.5
+real_mean_2 = 10
+real_sd_2 = 1
 
 
 # discriminator and generator NNs
@@ -79,8 +79,8 @@ learning_rate = tf.placeholder(tf.float32)
 
 # Train step
 
-train_g = tf.train.MomentumOptimizer(learning_rate,0.9).minimize(loss_g, var_list=g_parameters)
-train_d = tf.train.MomentumOptimizer(learning_rate,0.9).minimize(loss_d, var_list=d_parameters)
+train_g = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss_g, var_list=g_parameters)
+train_d = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss_d, var_list=d_parameters)
 
 data_directory = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data'
 os.chdir(data_directory)
@@ -89,18 +89,20 @@ start_time = time.time()
 
 for it in range(1,number_of_trails+1):
     # sample parameters
-    learning_rate_vec = np.random.uniform(0.00001,0.1,4)
+    learning_rate_vec = np.random.uniform(0.000001,0.1,10)
 
     res_matrix = np.zeros((len(learning_rate_vec), sample_size))
     learning_rate_out_vec = np.zeros((len(learning_rate_vec)))
 
     row =0
     for i, p in enumerate(learning_rate_vec):
-        # sample data
         generator_input = np.random.uniform(0, 1, (sample_size, 1))
-        real_dist_1 = np.random.normal(real_mean_1, real_sd_1, (sample_size, 1))
-        real_dist_2 = np.random.normal(real_mean_2, real_sd_2, (sample_size, 1))
-        real_dist = real_dist_1 + real_dist_2
+        # sample data
+        which = np.random.choice((0, 1), sample_size) # bernoulli deciding which guassian to sample from
+        means = which * real_mean_1 + (1 - which) * real_mean_2 # chooses mean_1 if which = 1
+        sds = which * real_sd_1 + (1 - which) * real_sd_2 # chooses sd_1 if which = 1
+        real_dist = np.random.normal(means, sds, sample_size) # generate samples
+        real_dist = real_dist.reshape((sample_size, 1))
 
         print 'Trial: {}/{}'.format(it,number_of_trails)
         print 'Step: {}/{}'.format(row+1, len(learning_rate_vec))
@@ -125,7 +127,7 @@ for it in range(1,number_of_trails+1):
             row = row+1
             # writer.close()
 
-            sns.distplot(generated, hist=False, rug=False)
+            sns.distplot(generated, hist=True, rug=False)
             sns.distplot(real_dist, hist=False, rug=False)
             plt.show()
 
