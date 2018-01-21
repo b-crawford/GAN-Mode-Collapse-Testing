@@ -44,6 +44,9 @@ def discriminator(input, parameters, minibatch_layer = False):
     output = tf.sigmoid(activ_3)
     return output
 
+######
+# my descriminator takes in one sample as input, for minibatch featres need to be able to take in more
+######
 
 def generator(input, parameters):
     pre_0 = tf.to_float(input)
