@@ -12,31 +12,26 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 sns.set(color_codes=True)
 
-# parameters
+# set parameters, these are simply defaults can change with argument parser
 trials = 100
-iterations = 5000
-hidden_layer_size_d= 10
-hidden_layer_size_g = 5
-batch_size = 20
-minibatch_features = False
+learn_steps = 5000
+minibatch_size = 8
+hidden_layer_size = 4
+minibatch_features = True
 
+seed = 42
+np.random.seed(seed)
+tf.set_random_seed(seed)
 
-# define a mixture distribution
 class DataDistribution(object):
     def __init__(self):
-        self.mu1 = -4
-        self.sigma1 = 0.5
-        self.mu2 = 4
-        self.sigma2 = 0.5
+        self.mu = 4
+        self.sigma = 0.5
 
     def sample(self, N):
-        which = np.random.choice((0, 1), N)  # bernoulli deciding which guassian to sample from
-        means = which * self.mu1 + (1 - which) * self.mu2  # chooses mean_1 if which = 1
-        sds = which * self.sigma1 + (1 - which) * self.sigma2  # chooses sd_1 if which = 1
-        samples = np.random.normal(means, sds, N)  # generate samples
+        samples = np.random.normal(self.mu, self.sigma, N)
         samples.sort()
         return samples
-
 
 
 class GeneratorDistribution(object):
@@ -84,8 +79,6 @@ def discriminator(input, h_dim, minibatch_layer=True):
     return h3
 
 
-
-
 def minibatch(input, num_kernels=5, kernel_dim=3):
     x = linear(input, num_kernels * kernel_dim, scope='minibatch', stddev=0.02)
     activation = tf.reshape(x, (-1, num_kernels, kernel_dim))
@@ -109,7 +102,7 @@ def optimizer(loss, var_list):
 
 def log(x):
     '''
-    Sometimes discriminator outputs can reach values close to
+    Sometimes discriminiator outputs can reach values close to
     (or even slightly less than) zero due to numerical rounding.
     This just makes sure that we exclude those values so that we don't
     end up with NaNs during optimisation.
@@ -123,7 +116,7 @@ class GAN(object):
         # distribution as input, and passes them through an MLP.
         with tf.variable_scope('G'):
             self.z = tf.placeholder(tf.float32, shape=(params.batch_size, 1))
-            self.G = generator(self.z, params.hidden_size_g)
+            self.G = generator(self.z, params.hidden_size)
 
         # The discriminator tries to tell the difference between samples from
         # the true data distribution (self.x) and the generated samples
@@ -136,13 +129,13 @@ class GAN(object):
         with tf.variable_scope('D'):
             self.D1 = discriminator(
                 self.x,
-                params.hidden_size_d,
+                params.hidden_size,
                 params.minibatch
             )
         with tf.variable_scope('D', reuse=True):
             self.D2 = discriminator(
                 self.G,
-                params.hidden_size_d,
+                params.hidden_size,
                 params.minibatch
             )
 
@@ -161,8 +154,6 @@ class GAN(object):
 
 def train(model, data, gen, params):
     for i in range(trials):
-        seed = np.random.random_integers(0, 1000000)
-        print'Seed: {}'.format(seed)
         np.random.seed(seed)
         tf.set_random_seed(seed)
 
@@ -185,9 +176,10 @@ def train(model, data, gen, params):
                     model.z: np.reshape(z, (params.batch_size, 1))
                 })
 
+            if not params.anim_path:
+                samps = samples(model, session, data, gen.range, params.batch_size)
+                plot_distributions(samps, gen.range)
 
-            samps = samples(model, session, data, gen.range, params.batch_size)
-            plot_distributions(samps, gen.range)
 
 
 def samples(
@@ -242,8 +234,6 @@ def samples(
     return db, pd, pg
 
 
-
-
 def plot_distributions(samps, sample_range):
     db, pd, pg = samps
     db_x = np.linspace(-sample_range, sample_range, len(db))
@@ -260,7 +250,6 @@ def plot_distributions(samps, sample_range):
     plt.show()
 
 
-
 def main(args):
     model = GAN(args)
     train(model, DataDistribution(), GeneratorDistribution(range=8), args)
@@ -268,16 +257,20 @@ def main(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num-steps', type=int, default=iterations,
+    parser.add_argument('--num-steps', type=int, default=learn_steps,
                         help='the number of training steps to take')
-    parser.add_argument('--hidden-size-g', type=int, default=hidden_layer_size_g,
-                        help='MLP hidden size generator')
-    parser.add_argument('--hidden-size-d', type=int, default=hidden_layer_size_d,
-                        help='MLP hidden size discriminator')
-    parser.add_argument('--batch-size', type=int, default=batch_size,
+    parser.add_argument('--hidden-size', type=int, default=hidden_layer_size,
+                        help='MLP hidden size')
+    parser.add_argument('--batch-size', type=int, default=minibatch_size,
                         help='the batch size')
     parser.add_argument('--minibatch', action='store_true', default=minibatch_features,
                         help='use minibatch discrimination')
+    parser.add_argument('--log-every', type=int, default=10,
+                        help='print loss after this many steps')
+    parser.add_argument('--anim-path', type=str, default=None,
+                        help='path to the output animation file')
+    parser.add_argument('--anim-every', type=int, default=1,
+                        help='save every Nth frame for animation')
     return parser.parse_args()
 
 
