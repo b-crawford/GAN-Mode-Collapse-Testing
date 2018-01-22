@@ -79,9 +79,10 @@ g_parameters = [weight_g_1,bias_g_1, weight_g_2, bias_g_2]
 x = tf.placeholder(tf.float32, shape=(None, 1))
 z = tf.placeholder(tf.float32, shape=(None, 1))
 with tf.variable_scope("Discrim") as scope:
-    D1 = discriminator(x, d_parameters, minibatch_layer= True)
+    mini_features = False
+    D1 = discriminator(x, d_parameters, minibatch_layer= mini_features)
     scope.reuse_variables()
-    D2 = discriminator(generator(z, g_parameters), d_parameters, minibatch_layer= True)
+    D2 = discriminator(generator(z, g_parameters), d_parameters, minibatch_layer= mini_features)
 loss_d = tf.reduce_mean(-tf.log(D1) - tf.log(1 - D2))
 loss_g = tf.reduce_mean(-tf.log(D2))
 
@@ -92,7 +93,7 @@ learning_rate = tf.placeholder(tf.float32)
 train_g = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss_g, var_list=g_parameters)
 train_d = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss_d, var_list=d_parameters)
 
-data_directory = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data'
+data_directory = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data/minibatch_features_{0}'.format(mini_features)
 os.chdir(data_directory)
 
 start_time = time.time()
