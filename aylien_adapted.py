@@ -1,3 +1,6 @@
+# adapted from http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/
+# https://github.com/AYLIEN/gan-intro
+
 import argparse
 import numpy as np
 import tensorflow as tf
