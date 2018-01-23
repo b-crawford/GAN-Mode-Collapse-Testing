@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 import seaborn as sns
 import os
+import pandas
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 sns.set(color_codes=True)
@@ -18,10 +19,8 @@ learn_steps = 5000
 minibatch_size = 8
 hidden_layer_size = 4
 minibatch_features = True
-
-seed = 42
-np.random.seed(seed)
-tf.set_random_seed(seed)
+data_directory = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data/minibatch_features_{}'.format(minibatch_features)
+os.chdir(data_directory)
 
 class DataDistribution(object):
     def __init__(self):
@@ -154,8 +153,7 @@ class GAN(object):
 
 def train(model, data, gen, params):
     for i in range(trials):
-        np.random.seed(seed)
-        tf.set_random_seed(seed)
+        print 'Trial: {}/{}'.format(i+1,trials)
 
         with tf.Session() as session:
             tf.local_variables_initializer().run()
@@ -178,7 +176,7 @@ def train(model, data, gen, params):
 
             if not params.anim_path:
                 samps = samples(model, session, data, gen.range, params.batch_size)
-                plot_distributions(samps, gen.range)
+                # plot_distributions(samps, gen.range)
 
 
 
@@ -230,7 +228,13 @@ def samples(
             }
         )
     pg, _ = np.histogram(g, bins=bins, density=True)
-
+    # save data to file
+    g = g.reshape((num_points))
+    g.sort()
+    g = g.reshape((1, num_points))
+    res_dataframe = pandas.DataFrame(data=g.astype(float))
+    with open("output.csv", 'a') as f:
+        res_dataframe.to_csv(f, sep=',', header=False, float_format='%.9f', index=False)
     return db, pd, pg
 
 

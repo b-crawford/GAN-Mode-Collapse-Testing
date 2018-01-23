@@ -18,6 +18,7 @@ learn_steps = (number_of_epochs*sample_size) / mini_batch_size
 hidden_layer_size_d = 6
 hidden_layer_size_g = 5
 
+
 # define actual distribution
 real_mean_1 = 0
 real_sd_1 = 1
