@@ -74,6 +74,8 @@ loss_d = tf.reduce_mean(-tf.log(D1) - tf.log(1 - D2))
 loss_g = tf.reduce_mean(tf.log(1-D2)) # 1
 # loss_g = tf.reduce_mean(-tf.log(D2)) # 2
 
+print loss_g
+
 
 which_objective = '1'
 
