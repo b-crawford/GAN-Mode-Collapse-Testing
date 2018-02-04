@@ -8,12 +8,6 @@ suppressMessages(suppressWarnings(library(plotly)))
 library(lattice)
 source('/Users/Billy/PycharmProjects/GALR/mulitplot.R')
 
-### Objective -------------------
-which_objective = 1
-minibatch = 1
-
-which_minibatch = c('minibatch','no_minibatch')
-
 
 ### Colours ------------
 
@@ -26,41 +20,60 @@ gg_color_hue <- function(n) {
 cols = gg_color_hue(2)
 
 ### Data -------------------
-folder = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data/'
-sub_folder = paste(c('objective_',which_objective,'_',which_minibatch[minibatch],'/'), collapse = '')
-file = paste(c(folder,sub_folder,'output.csv'),collapse = '')
+dataframes = list()
 
-df = data.frame(as.matrix(fread(file, header = F)))
-df = na.omit(df)
+item = 1
+for(objective in 1:2){
+  for(minibatch in c('minibatch','no_minibatch')){
+    folder = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data/'
+    sub_folder = paste(c('objective_',objective,'_',minibatch,'/'), collapse = '')
+    file = paste(c(folder,sub_folder,'output.csv'),collapse = '')
+    df = data.frame(as.matrix(fread(file, header = F)))
+    df = na.omit(df)
+    dataframes[[item]] = df
+    item =item+1
+  }
+}
 
 # Find mean density values for each entry for each distribution in the mixture -------
 
-low_gauss_densities = cbind(df[,1],apply(df[,2:ncol(df)], c(1,2),dnorm, mean = 0,sd = 1))
-high_gauss_densities = cbind(df[,1],apply(df[,2:ncol(df)], c(1,2),dnorm, mean = 10,sd = 1))
-
-colnames(df)= colnames(low_gauss_densities)= colnames(high_gauss_densities)= c('learning_rate',2:ncol(df))
-
-low_gauss_densities_means = rowMeans(low_gauss_densities)
-high_gauss_densities_means = rowMeans(high_gauss_densities)
-
-means_df = data.frame(low = low_gauss_densities_means,high = high_gauss_densities_means)
-
-find_big_over_small = function(vec){
-  return(max(vec)/min(vec))
+return_big_over_small = function(df){
+  low_gauss_densities = cbind(df[,1:2],apply(df[,3:ncol(df)], c(1,2),dnorm, mean = 0,sd = 1))
+  high_gauss_densities = cbind(df[,1:2],apply(df[,3:ncol(df)], c(1,2),dnorm, mean = 10,sd = 1))
+  
+  colnames(df)= colnames(low_gauss_densities)= colnames(high_gauss_densities)= c('learning_rate','Time',3:ncol(df))
+  
+  low_gauss_densities_means = rowMeans(low_gauss_densities[,3:ncol(df)])
+  high_gauss_densities_means = rowMeans(high_gauss_densities[,3:ncol(df)])
+  
+  means_df = data.frame(low = low_gauss_densities_means,high = high_gauss_densities_means)
+  
+  find_big_over_small = function(vec){
+    return(max(vec)/min(vec))
+  }
+  
+  big_over_small = as.numeric(apply(means_df,MARGIN = 1,find_big_over_small))
+ 
+  return(big_over_small)
 }
 
-big_over_small = apply(means_df,MARGIN = 1,find_big_over_small)
-find_closest_to_1 = abs(big_over_small-1)
+big_over_small_list = lapply(dataframes,return_big_over_small)
 
-worst = as.numeric(df[which.max(big_over_small),2:ncol(df)])
-best = as.numeric(df[which.min(find_closest_to_1),2:ncol(df)])
+which_closest_to_1 = function(vec){
+  vec_minus_1 = abs(vec-1)
+  best = which.min(vec_minus_1)
+  return(best)
+}
 
-plot(density(worst))
-plot(density(best))
+best_data_rows = lapply(big_over_small_list,which_closest_to_1)
 
-df3 = data.frame(x=worst)
+collected_rows_for_hist = list()
+for(item in 1:4){
+  collected_rows_for_hist[[item]] = as.numeric(dataframes[[item]][best_data_rows[[item]],3:ncol(dataframes[[item]])])
+}
 
-bin_number = 30
+
+bin_number = 40
 
 mixture_density = function(x){
   return(dnorm(x,10,1)/2 + dnorm(x,0,1)/2)
@@ -74,18 +87,32 @@ pull_max_density =function(vec){
   return(max(histo$density))
 }
 
-max_density = max(c(pull_max_density(best),pull_max_density(best)))/1.5
+max_density = max(as.numeric(lapply(collected_rows_for_hist,pull_max_density)))
 
-
-p1 = ggplot(data.frame(x=worst), aes(x)) + 
+p1 = ggplot(data.frame(x=collected_rows_for_hist[[1]]), aes(x)) + 
   geom_histogram(fill = cols[2],aes(y = ..density..),bins = bin_number)+
   stat_function(fun = mixture_density, lwd = 1, col = cols[1])+
-  xlim(-5,15)+ylim(0,max_density)+labs(title='Worst')+ylab('Density')
+  xlim(-5,15)+ylim(0,max_density)+labs(title='1 Minibatch')+ylab('Density')
 
-p2 = ggplot(data.frame(x=best), aes(x)) + 
+p2 = ggplot(data.frame(x=collected_rows_for_hist[[2]]), aes(x)) + 
   geom_histogram(fill = cols[2],aes(y = ..density..),bins = bin_number)+
   stat_function(fun = mixture_density, lwd = 1, col = cols[1])+
-  xlim(-5,15)+ylim(0,max_density)+labs(title='Best')+ylab('Density')
+  xlim(-5,15)+ylim(0,max_density)+labs(title='1 No Minibatch')+ylab('Density')
 
-multiplot(p1, p2, cols=2)
+
+p3 = ggplot(data.frame(x=collected_rows_for_hist[[3]]), aes(x)) + 
+  geom_histogram(fill = cols[2],aes(y = ..density..),bins = bin_number)+
+  stat_function(fun = mixture_density, lwd = 1, col = cols[1])+
+  xlim(-5,15)+ylim(0,max_density)+labs(title='2 Minibatch')+ylab('Density')
+
+p4 = ggplot(data.frame(x=collected_rows_for_hist[[4]]), aes(x)) + 
+  geom_histogram(fill = cols[2],aes(y = ..density..),bins = bin_number)+
+  stat_function(fun = mixture_density, lwd = 1, col = cols[1])+
+  xlim(-5,15)+ylim(0,max_density)+labs(title='2 No Minibatch')+ylab('Density')
+
+multiplot(p1, p2,p3,p4, cols=2)
+
+
+
+
 
