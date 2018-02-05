@@ -7,6 +7,9 @@ suppressMessages(suppressWarnings(library(data.table)))
 suppressMessages(suppressWarnings(library(plotly)))
 library(lattice)
 source('/Users/Billy/PycharmProjects/GALR/mulitplot.R')
+library(entropy)
+library(FNN)
+
 
 
 ### Colours ------------
@@ -35,7 +38,100 @@ for(objective in 1:2){
   }
 }
 
+
+# Find KL divergence ----
+length_vec = ncol(dataframes[[1]])-2
+which_mean = sample(c(0,10),size = length_vec, replace =T)
+real_samples = rnorm(n = length_vec,mean = which_mean,sd =1 )
+
+mode_collapse = rnorm(n = length_vec,mean = 10,sd =1 )
+
+# Kernel density plug in -------
+real_density = function(x){
+  return(0.5*dnorm(x,10,1)+0.5*dnorm(x,0,1))
+}
+
+KL_kernel_estimate = function(vec){
+  x_values = density(vec)$x
+  y_values = density(vec)$y
+  return(sum(real_density(x_values)*log(real_density(x_values)/y_values)))
+}
+
+KL_kernel_estimate(real_samples)
+KL_kernel_estimate(mode_collapse)
+
+# From paper (Do i need to do this, can just use k-nearest neighbours)-------
+points_in_each_segment = 20
+
+
+
+# K nearest neighbours ---------
+
+
+length_vec = 10000
+which_mean = sample(c(0,10),size = length_vec, replace =T)
+real_dist = rnorm(n = length_vec,mean = which_mean,sd =1 )
+
+kl_to_real = function(vec){
+  vec_1 = as.numeric(vec)
+  return(KL.divergence(real_dist,vec_1, k=10)[10])
+}
+
+kl_by_row = function(df){
+  return(as.numeric(apply(df[,3:ncol(df)],1, kl_to_real)))
+}
+
+kl_rows = lapply(X = dataframes,FUN = kl_by_row)
+
+which_min_kl_div = lapply(kl_rows,FUN = function(vec){return(which.min(vec))})
+
+collected_rows_for_hist = list()
+for(item in 1:4){
+  collected_rows_for_hist[[item]] = as.numeric(dataframes[[item]][which_min_kl_div[[item]],3:ncol(dataframes[[item]])])
+}
+
+bin_number = 50
+
+mixture_density = function(x){
+  return(dnorm(x,10,1)/2 + dnorm(x,0,1)/2)
+}
+
+pull_max_density =function(vec){
+  min_break = round_any(min(vec), diff(range(vec))/bin_number, floor)
+  max_break = round_any(max(vec), diff(range(vec))/bin_number, ceiling)
+  breaks = seq(min_break, max_break, diff(range(vec/bin_number)))
+  histo = hist(vec, breaks=breaks, plot=F)
+  return(max(histo$density))
+}
+
+max_density = max(as.numeric(lapply(collected_rows_for_hist,pull_max_density)))
+
+p1 = ggplot(data.frame(x=collected_rows_for_hist[[1]]), aes(x)) + 
+  geom_histogram(fill = cols[2],aes(y = ..density..),bins = bin_number)+
+  stat_function(fun = mixture_density, lwd = 1, col = cols[1])+
+  xlim(-5,15)+ylim(0,max_density)+labs(title='1 Minibatch')+ylab('Density')
+
+p2 = ggplot(data.frame(x=collected_rows_for_hist[[2]]), aes(x)) + 
+  geom_histogram(fill = cols[2],aes(y = ..density..),bins = bin_number)+
+  stat_function(fun = mixture_density, lwd = 1, col = cols[1])+
+  xlim(-5,15)+ylim(0,max_density)+labs(title='1 No Minibatch')+ylab('Density')
+
+
+p3 = ggplot(data.frame(x=collected_rows_for_hist[[3]]), aes(x)) + 
+  geom_histogram(fill = cols[2],aes(y = ..density..),bins = bin_number)+
+  stat_function(fun = mixture_density, lwd = 1, col = cols[1])+
+  xlim(-5,15)+ylim(0,max_density)+labs(title='2 Minibatch')+ylab('Density')
+
+p4 = ggplot(data.frame(x=collected_rows_for_hist[[4]]), aes(x)) + 
+  geom_histogram(fill = cols[2],aes(y = ..density..),bins = bin_number)+
+  stat_function(fun = mixture_density, lwd = 1, col = cols[1])+
+  xlim(-5,15)+ylim(0,max_density)+labs(title='2 No Minibatch')+ylab('Density')
+
+multiplot(p1, p2,p3,p4, cols=2)
+
+
 # Find mean density values for each entry for each distribution in the mixture -------
+
 
 return_big_over_small = function(df){
   low_gauss_densities = cbind(df[,1:2],apply(df[,3:ncol(df)], c(1,2),dnorm, mean = 0,sd = 1))
@@ -57,6 +153,7 @@ return_big_over_small = function(df){
   return(big_over_small)
 }
 
+
 big_over_small_list = lapply(dataframes,return_big_over_small)
 
 which_closest_to_1 = function(vec){
@@ -73,7 +170,7 @@ for(item in 1:4){
 }
 
 
-bin_number = 40
+bin_number = 50
 
 mixture_density = function(x){
   return(dnorm(x,10,1)/2 + dnorm(x,0,1)/2)

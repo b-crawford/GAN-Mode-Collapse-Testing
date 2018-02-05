@@ -16,8 +16,8 @@ import time
 from tqdm import tqdm
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-
-# Structure: in each trial generate parameters, then for number_of_epochs generate a batch of size 'batch_size' each time from the input distribution and the real distribution
+# Structure: in each trial generate parameters, then for number_of_epochs generate a batch of size 'batch_size'
+# each time from the input distribution and the real distribution
 # and train the GAN on it. Randomly select which objective function for G and whether to do minibatch selection
 
 # In[12]:
@@ -31,18 +31,12 @@ hidden_layer_size_g = 5
 
 for it in range(1,number_of_trails+1):
 
-
     which_objective = np.random.choice((1, 2), 1)[0]
     minibatch_discrimination = np.random.choice((True, False), 1)[0]
-
-
-    print 'Objective function: {}'.format(which_objective)
-    print 'Minibatch discrimination: {}'.format(minibatch_discrimination)
 
     # Define actual distribution, Gaussian mixture model:
 
     # In[3]:
-
 
     real_mean_1 = 0
     real_sd_1 = 1
@@ -107,14 +101,9 @@ for it in range(1,number_of_trails+1):
         return output
 
 
-
-
-
-
     # D parameters
 
     # In[6]:
-
 
     weight_d_1 = tf.Variable(tf.random_uniform([1, hidden_layer_size_d], minval=0, maxval=1, dtype=tf.float32))
     bias_d_1 = tf.Variable(tf.random_uniform([hidden_layer_size_d], minval=0, maxval=1, dtype=tf.float32))
@@ -137,13 +126,9 @@ for it in range(1,number_of_trails+1):
 
     simple_d_parameters = [weight_d_1,bias_d_1, weight_d_2, bias_d_2,weight_d_3, bias_d_3]
 
-
-
     # G parameters
 
     # In[7]:
-
-
 
     weight_g_1 = tf.Variable(tf.random_uniform([1, hidden_layer_size_g], minval=0, maxval=1, dtype=tf.float32))
     bias_g_1 = tf.Variable(tf.random_uniform([hidden_layer_size_g], minval=0, maxval=1, dtype=tf.float32))
@@ -175,7 +160,6 @@ for it in range(1,number_of_trails+1):
         discriminator_dict_2 = {False: simple_discriminator(generator(generator_input_placeholder, g_parameters),simple_d_parameters),
                             True: discriminator(generator(generator_input_placeholder, g_parameters), d_parameters,fake_batch_l1,fake_mean)}
         d_output_fake = discriminator_dict_2[minibatch_discrimination]
-
 
     objectives = {1: tf.reduce_mean(tf.log(1-d_output_fake)) , 2: -tf.reduce_mean(tf.log(d_output_fake))}
     loss_d = tf.reduce_mean(-tf.log(d_output_real) - tf.log(1 - d_output_fake))
@@ -218,8 +202,11 @@ for it in range(1,number_of_trails+1):
         start_time = time.time()
 
         print 'Trial: {}/{}'.format(it,number_of_trails)
-        print 'Step: {}/{}'.format(row+1, len(learning_rate_vec))
+        # print 'Step: {}/{}'.format(row+1, len(learning_rate_vec))
         print 'Learning Rate: {0}'.format(p)
+        print 'Objective function: {}'.format(which_objective)
+        print 'Minibatch discrimination: {}'.format(minibatch_discrimination)
+
 
         with tf.Session() as sess:
             tf.global_variables_initializer().run()
@@ -262,7 +249,7 @@ for it in range(1,number_of_trails+1):
     res_dataframe = pd.DataFrame(data=res_matrix.astype(float))
     learning_rate_dataframe = pd.DataFrame(data=learning_rate_out_vec.astype(float))
     time_dataframe = pd.DataFrame(data=time_taken_out_vec.astype(float))
-	
+
     output_dataframe1 = pd.concat([learning_rate_dataframe.reset_index(drop=True), time_dataframe], axis=1)
     output_dataframe = pd.concat([output_dataframe1.reset_index(drop=True), res_dataframe], axis=1)
 
