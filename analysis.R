@@ -50,16 +50,19 @@ dataframes = list()
 item = 1
 for(objective in 1:2){
   for(minibatch in c('minibatch','no_minibatch')){
-    folder = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data/'
+    folder = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data/data2/'
     sub_folder = paste(c('objective_',objective,'_',minibatch,'/'), collapse = '')
     file = paste(c(folder,sub_folder,'output.csv'),collapse = '')
     df = data.frame(as.matrix(fread(file, header = F)))
     df = na.omit(df)
     dataframes[[item]] = df
     item =item+1
+    print(nrow(df))
     rm(df)
   }
 }
+
+
 
 # K nearest neighbours ---------
 
@@ -74,11 +77,11 @@ kl_to_real = function(vec){
 }
 
 kl_by_row = function(df){
-  return(as.numeric(apply(df[,3:ncol(df)],1, kl_to_real)))
+  return(as.numeric(pbapply(df[,3:ncol(df)],1, kl_to_real)))
 }
 
 
-kl_rows = pblapply(X = dataframes,FUN = kl_by_row)
+kl_rows = lapply(X = dataframes,FUN = kl_by_row)
 
 which_min_kl_div = lapply(kl_rows,FUN = function(vec){return(which.min(vec))})
 
@@ -97,9 +100,6 @@ which.median = function(x) {
 }
 
 which_med_kl_div = lapply(kl_rows,which.median)
-
-
-hist(as.numeric(dataframes[[4]][which_med_kl_div[[4]],3:ncol(dataframes[[4]])]))
 
 # Compare two median side by side general function ----
 

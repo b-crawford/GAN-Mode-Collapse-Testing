@@ -23,8 +23,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # In[12]:
 
 number_of_trails = 1000
-number_of_epochs = 100000
-batch_size = 2000
+number_of_epochs = 50000
+batch_size = 1000
 hidden_layer_size_d = 6
 hidden_layer_size_g = 5
 
@@ -180,7 +180,7 @@ for it in range(1,number_of_trails+1):
 
     minibatch_dict = {True: 'minibatch', False : 'no_minibatch'}
 
-    data_directory = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data/objective_{}_{}'.format(which_objective,minibatch_dict[minibatch_discrimination])
+    data_directory = '/Users/Billy/PycharmProjects/GAN-Mode-Collapse-Testing/data/data2/objective_{}_{}'.format(which_objective,minibatch_dict[minibatch_discrimination])
     os.chdir(data_directory)
 
 
@@ -255,6 +255,7 @@ for it in range(1,number_of_trails+1):
 
     with open("output.csv", 'a') as f:
         output_dataframe.to_csv(f, sep=',', header=False, float_format='%.9f', index=False)
-
-
+	
+	print 'Cooling 30 seconds...'
+	time.sleep(30)
 
